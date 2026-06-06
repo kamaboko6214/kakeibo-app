@@ -4,18 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
-const categoryIcons: Record<string, string> = {
-  '食費': '🍱',
-  '外食': '🍽',
-  '日用品': '🧴',
-  '交通': '🚃',
-  '娯楽': '🎬',
-  '光熱費': '💡',
-  '美容': '💄',
-  '医療': '🩺',
-  'プレゼント': '🎁',
-  'その他': '📦',
-}
+import { CATEGORY_ICON, CATEGORY_COLOR } from '@/lib/constants'
+
 
 const quickAmounts = [500, 1000, 2000, 3000, 5000]
 const HOUSEHOLD_ID = '00000000-0000-0000-0000-000000000001'
@@ -97,15 +87,6 @@ export default function NewExpensePage() {
             {loading ? '保存中...' : '保存'}
           </button>
         </div>
-
-        {/* 金額表示 */}
-        <div className="text-center py-6">
-          <p className="text-sm text-gray-400 mb-2">金額</p>
-          <p className="text-5xl font-bold text-[#334155]">
-            ¥{amount ? Number(amount).toLocaleString() : '0'}
-          </p>
-        </div>
-
         {/* カテゴリ選択 */}
         <div className="px-4 mb-4">
           <p className="text-sm text-gray-400 mb-3">カテゴリ</p>
@@ -120,15 +101,49 @@ export default function NewExpensePage() {
                     : 'border-gray-100 bg-white'
                 }`}
               >
-                <span className="text-xl">{categoryIcons[cat.name] ?? '📦'}</span>
+                <span className="text-xl">{CATEGORY_ICON[cat.name] ?? '📦'}</span>
                 <span className="text-xs text-[#334155]">{cat.name}</span>
               </button>
             ))}
           </div>
         </div>
+        {/* クイック金額 */}
+        <div className="px-2">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {quickAmounts.map((val) => (
+              <button
+                key={val}
+                onClick={() => setAmount(String(val))}
+                className="flex-shrink-0 bg-white border border-gray-200 rounded-full px-4 py-2 text-sm text-[#334155]"
+              >
+                ¥{val.toLocaleString()}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 金額表示 */}
+        <div className="text-center py-6">
+          <p className="text-sm text-gray-400 mb-2">金額</p>
+          <p className="text-5xl font-bold text-[#334155]">
+            ¥{amount ? Number(amount).toLocaleString() : '0'}
+          </p>
+        </div>
+        {/* テンキー */}
+        <div className="px-4 grid grid-cols-3 gap-2 pb-5">
+          {['1','2','3','4','5','6','7','8','9','00','0','del'].map((key) => (
+            <button
+              key={key}
+              onClick={() => handleNumber(key)}
+              className="bg-white rounded-2xl py-4 text-xl font-bold text-[#334155] shadow-sm active:bg-gray-50"
+            >
+              {key === 'del' ? '⌫' : key}
+            </button>
+          ))}
+        </div>
 
         {/* 日付・メモ */}
-        <div className="px-4 mb-4 space-y-3">
+        <div className="px-4 pb-25 space-y-3">
           <div className="bg-white rounded-xl p-4 flex items-center gap-3">
             <span>📅</span>
             <input
@@ -149,35 +164,6 @@ export default function NewExpensePage() {
             />
           </div>
         </div>
-
-        {/* クイック金額 */}
-        <div className="px-4 mb-3">
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {quickAmounts.map((val) => (
-              <button
-                key={val}
-                onClick={() => setAmount(String(val))}
-                className="flex-shrink-0 bg-white border border-gray-200 rounded-full px-4 py-2 text-sm text-[#334155]"
-              >
-                ¥{val.toLocaleString()}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* テンキー */}
-        <div className="px-4 grid grid-cols-3 gap-2">
-          {['1','2','3','4','5','6','7','8','9','00','0','del'].map((key) => (
-            <button
-              key={key}
-              onClick={() => handleNumber(key)}
-              className="bg-white rounded-2xl py-4 text-xl font-bold text-[#334155] shadow-sm active:bg-gray-50"
-            >
-              {key === 'del' ? '⌫' : key}
-            </button>
-          ))}
-        </div>
-
       </div>
     </main>
   )

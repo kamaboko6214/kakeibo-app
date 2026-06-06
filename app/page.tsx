@@ -1,19 +1,70 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase'
+import { CATEGORY_ICON, CATEGORY_COLOR, HOUSEHOLD_ID } from '@/lib/constants'
+import Link from 'next/link'
+
 export default function Home() {
-  // モックデータ
+  const [categories, setCategories] = useState<{ id: string, name: string, icon: string, color: string }[]>([])
+  const supabase = createClient()
+  const [categoryTotals, setCategoryTotals] = useState<Record<string, number>>({})
+  const [recentExpenses, setRecentExpenses] = useState<any[]>([])
+  const [year, setYear] = useState(new Date().getFullYear())
+  const [month, setMonth] = useState(new Date().getMonth() + 1)
+
+// カテゴリの取得
+  useEffect(() => {
+    const fetchCategories = async() => {
+      const { data } = await supabase
+        .from('categories')
+        .select('id, name')
+        .eq('household_id', HOUSEHOLD_ID)
+        if (data) {
+          const enriched = data.map(cat => ({
+            ...cat,
+            icon: CATEGORY_ICON[cat.name] ?? '📦',
+            color: CATEGORY_COLOR[cat.name] ?? '#94A3B8',
+          }))
+          setCategories(enriched)
+        }
+    }
+    fetchCategories()
+  }, [])
+
+  // 最近の支出
+  useEffect(() => {
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month, 0).getDate()
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    const fetchRecentExpenses = async() => {
+      const { data } = await supabase
+        .from('expenses')
+        .select('date, memo, amount, categories(name)')
+        .eq('household_id', HOUSEHOLD_ID)
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date', { ascending: false })
+        .limit(5)
+        if (data) {
+          const enriched = data.map((e: any) => ({
+            ...e,
+            icon: CATEGORY_ICON[e.categories?.name] ?? '📦',
+            categoryName: e.categories?.name ?? 'その他',
+        }))
+        setRecentExpenses(enriched)
+      }    
+    }
+    fetchRecentExpenses()
+  }, [])
+
+
+  // いったんモック
   const mockData = {
-    year: 2026,
-    month: 5,
     totalBudget: 150000,
     totalExpense: 76900,
     user1: { name: 'なつき', avatar: '🐰', amount: 17180 },
     user2: { name: 'ゆうた', avatar: '🐻', amount: 13700 },
-    categories: [
-      { name: '光熱費', icon: '💡', amount: 18200, color: '#FCD34D' },
-      { name: '食費', icon: '🍱', amount: 14440, color: '#FB7185' },
-      { name: '娯楽', icon: '🎬', amount: 14000, color: '#FB7185' },
-      { name: '外食', icon: '🍽', amount: 11900, color: '#FCD34D' },
-      { name: '美容', icon: '💄', amount: 6200, color: '#FB7185' },
-    ],
     recentExpenses: [
       { date: '5月26日', icon: '🍱', name: 'スーパー', category: '食費', amount: 2480 },
       { date: '5月26日', icon: '🍽', name: '記念日ディナー', category: '外食', amount: 3800 },
@@ -36,7 +87,7 @@ export default function Home() {
         {/* ヘッダー */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <p className="text-sm text-gray-400">{mockData.year}年 {mockData.month}月</p>
+            <p className="text-sm text-gray-400">{year}年 {month}月</p>
             <h1 className="text-2xl font-bold text-[#334155]">おかえり！</h1>
           </div>
           <div className="flex gap-2">
@@ -92,22 +143,24 @@ export default function Home() {
         <div className="bg-white rounded-2xl p-4 shadow-sm mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-bold text-[#334155]">カテゴリ別</h2>
-            <button className="text-sm text-[#6EE7B7] font-bold">予算をみる →</button>
+            <Link href="/budget/">
+            <button className="text-sm text-[#6EE7B7] font-bold cursor-pointer hover:opacity-60 duration-200">予算をみる →</button>
+            </Link>
           </div>
           <div className="space-y-3">
-            {mockData.categories.map((cat) => (
+            {categories.map((cat) => (
               <div key={cat.name} className="flex items-center gap-3">
                 <span className="text-xl w-8">{cat.icon}</span>
                 <div className="flex-1">
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-[#334155]">{cat.name}</span>
-                    <span className="font-bold text-[#334155]">¥{cat.amount.toLocaleString()}</span>
+                    {/* <span className="font-bold text-[#334155]">¥{cat.amount.toLocaleString()}</span> */}
                   </div>
                   <div className="bg-gray-100 rounded-full h-1.5">
                     <div
                       className="rounded-full h-1.5"
                       style={{
-                        width: `${Math.round((cat.amount / mockData.totalExpense) * 100)}%`,
+                        // width: `${Math.round((cat.amount / mockData.totalExpense) * 100)}%`,
                         backgroundColor: cat.color
                       }}
                     />
@@ -122,15 +175,17 @@ export default function Home() {
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-bold text-[#334155]">最近の支出</h2>
-            <button className="text-sm text-[#6EE7B7] font-bold">すべて →</button>
+            <Link href="/expenses/">
+            <button className="text-sm text-[#6EE7B7] font-bold cursor-pointer hover:opacity-60 duration-200">すべて →</button>
+            </Link>
           </div>
           <div className="space-y-3">
-            {mockData.recentExpenses.map((expense, i) => (
+            {recentExpenses.map((expense, i) => (
               <div key={i} className="flex items-center gap-3">
                 <span className="text-xl w-8">{expense.icon}</span>
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-[#334155]">{expense.name}</p>
-                  <p className="text-xs text-gray-400">{expense.category} · {expense.date}</p>
+                  <p className="text-sm font-bold text-[#334155]">{expense.memo}</p>
+                  <p className="text-xs text-gray-400">{expense.categoryName} · {expense.date}</p>
                 </div>
                 <p className="font-bold text-[#334155]">¥{expense.amount.toLocaleString()}</p>
               </div>
