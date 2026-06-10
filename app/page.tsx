@@ -10,6 +10,8 @@ export default function Home() {
   const supabase = createClient()
   const [categoryTotals, setCategoryTotals] = useState<Record<string, number>>({})
   const [recentExpenses, setRecentExpenses] = useState<any[]>([])
+  const [totalExpense, setTotalExpense] = useState<number>(0)
+  const [totalBudget, setTotalBudget] = useState<number>(0)
   const [year, setYear] = useState(new Date().getFullYear())
   const [month, setMonth] = useState(new Date().getMonth() + 1)
 
@@ -37,6 +39,8 @@ export default function Home() {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`
     const lastDay = new Date(year, month, 0).getDate()
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+    // 最近の支出
     const fetchRecentExpenses = async() => {
       const { data } = await supabase
         .from('expenses')
@@ -55,14 +59,47 @@ export default function Home() {
         setRecentExpenses(enriched)
       }    
     }
+
+    // 支出合計
+    const fetchTotalExpense = async () => {
+      const { data } = await supabase
+        .from('expenses')
+        .select('amount')
+        .eq('household_id', HOUSEHOLD_ID)
+        .gte('date', startDate)
+        .lte('date', endDate)
+
+      if (data) {
+        const total = data.reduce((sum: number, e: any) => sum + e.amount, 0)
+        setTotalExpense(total)
+      }
+    }
+
+    // 予算合計
+    const fetchTotalBudget = async () => {
+      const today = new Date()
+      const yearMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+
+      const { data } = await supabase
+        .from('budgets')
+        .select('amount')
+        .eq('household_id', HOUSEHOLD_ID)
+        .eq('year_month', yearMonth)
+
+      if (data) {
+        const total = data.reduce((sum: number, b: any) => sum + b.amount, 0)
+        setTotalBudget(total)
+      }
+    }
+
+    fetchTotalBudget()
+    fetchTotalExpense()
     fetchRecentExpenses()
   }, [])
 
 
   // いったんモック
   const mockData = {
-    totalBudget: 150000,
-    totalExpense: 76900,
     user1: { name: 'なつき', avatar: '🐰', amount: 17180 },
     user2: { name: 'ゆうた', avatar: '🐻', amount: 13700 },
     recentExpenses: [
@@ -74,8 +111,8 @@ export default function Home() {
     ],
   }
 
-  const remaining = mockData.totalBudget - mockData.totalExpense
-  const percentage = Math.round((mockData.totalExpense / mockData.totalBudget) * 100)
+  const remaining = totalBudget - totalExpense
+  const percentage = Math.round((totalExpense / totalBudget) * 100)
   const today = new Date()
   const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
   const remainingDays = lastDay - today.getDate()
@@ -104,8 +141,8 @@ export default function Home() {
         <div className="bg-[#6EE7B7] rounded-2xl p-5 mb-4 text-white">
           <p className="text-sm opacity-80 mb-1">今月の支出</p>
           <div className="flex items-end gap-2 mb-3">
-            <span className="text-4xl font-bold">¥{mockData.totalExpense.toLocaleString()}</span>
-            <span className="text-sm opacity-80 mb-1">/ ¥{mockData.totalBudget.toLocaleString()}</span>
+            <span className="text-4xl font-bold">¥{totalExpense.toLocaleString()}</span>
+            <span className="text-sm opacity-80 mb-1">/ ¥{totalBudget.toLocaleString()}</span>
           </div>
           <div className="bg-white/30 rounded-full h-2 mb-3">
             <div
