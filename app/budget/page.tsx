@@ -1,23 +1,70 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase'
 
-const budgetData = [
-  { name: 'プレゼント', icon: '🎁', spent: 5500, budget: 5000 },
-  { name: '光熱費', icon: '💡', spent: 18200, budget: 18000 },
-  { name: '娯楽', icon: '🎬', spent: 14000, budget: 15000 },
-  { name: '美容', icon: '💄', spent: 6200, budget: 8000 },
-  { name: '外食', icon: '🍽', spent: 11900, budget: 20000 },
-  { name: '食費', icon: '🍱', spent: 14440, budget: 25000 },
-  { name: '医療', icon: '🩺', spent: 2200, budget: 5000 },
-  { name: '日用品', icon: '🧴', spent: 3800, budget: 8000 },
-]
+// const budgetData = [
+//   { name: 'プレゼント', icon: '🎁', spent: 5500, budget: 5000 },
+//   { name: '光熱費', icon: '💡', spent: 18200, budget: 18000 },
+//   { name: '娯楽', icon: '🎬', spent: 14000, budget: 15000 },
+//   { name: '美容', icon: '💄', spent: 6200, budget: 8000 },
+//   { name: '外食', icon: '🍽', spent: 11900, budget: 20000 },
+//   { name: '食費', icon: '🍱', spent: 14440, budget: 25000 },
+//   { name: '医療', icon: '🩺', spent: 2200, budget: 5000 },
+//   { name: '日用品', icon: '🧴', spent: 3800, budget: 8000 },
+// ]
 
 const totalBudget = 150000
 const totalSpent = 76900
-
+const HOUSEHOLD_ID = '00000000-0000-0000-0000-000000000001'
 export default function BudgetPage() {
   const [month, setMonth] = useState(5)
+  const supabase = createClient()
+  const [budgetData, setBudgetData] = useState<{ name: string; icon: string; spent: number; budget: number }[]>([])
+  useEffect(() => {
+    const fetchAll = async () => {
+      const startDate = `${new Date().getFullYear()}-${String(month).padStart(2, '0')}-01`
+      const lastDay = new Date(new Date().getFullYear(), month, 0).getDate()
+      const endDate = `${new Date().getFullYear()}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+      const { data: budgets } = await supabase
+        .from('budgets')
+        .select('amount, category_id, categories(id, name)')
+        .eq('household_id', HOUSEHOLD_ID)
+        .eq('year_month', `${new Date().getFullYear()}-${String(month).padStart(2, '0')}`)
+
+      const { data: expenses } = await supabase
+        .from('expenses')
+        .select('amount, category_id, categories(id, name)')
+        .eq('household_id', HOUSEHOLD_ID)
+        .gte('date', startDate)
+        .lte('date', endDate)
+
+      const enriched = budgets ? budgets.map((b:any) => ({
+        name: b.categories?.name ?? 'その他',
+        icon: b.categories?.icon ?? '📦',
+        budget: b.amount ?? 0,
+        spent: 0,
+        category_id: b.category_id,
+      })) : []
+
+      const totals: Record<string, number> = {}
+      if (expenses) {
+        expenses.forEach((e: any) => {
+          const id = e.category_id
+          totals[id] = (totals[id] ?? 0) + e.amount
+          })
+        }
+    const maerged = enriched.map((b: any) => ({
+      name: b.name,
+      icon: b.icon,
+      spent: totals[b.category_id] ?? 0,
+      budget: b.spent,
+    }))
+  
+    setBudgetData(maerged)
+  }
+  fetchAll()
+  }, [month])
 
   const getStatus = (spent: number, budget: number) => {
     const ratio = spent / budget
