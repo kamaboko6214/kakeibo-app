@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase"
+import Link from "next/link"
 
 // const budgetData = [
 //   { name: 'プレゼント', icon: '🎁', spent: 5500, budget: 5000 },
@@ -28,14 +29,18 @@ export default function BudgetPage() {
       const startDate = `${new Date().getFullYear()}-${String(month).padStart(2, "0")}-01`
       const lastDay = new Date(new Date().getFullYear(), month, 0).getDate()
       const endDate = `${new Date().getFullYear()}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`
+      const yearMonth = `${new Date().getFullYear()}-${String(month).padStart(2, "0")}`
+
       const { data: budgets } = await supabase
         .from("budgets")
         .select("amount, category_id, categories(id, name)")
         .eq("household_id", HOUSEHOLD_ID)
-        .eq(
-          "year_month",
-          `${new Date().getFullYear()}-${String(month).padStart(2, "0")}`,
-        )
+        .eq("year_month", yearMonth)
+
+      const { data: defaults } = await supabase
+        .from("budget_defaults")
+        .select("amount, category_id, categories(id, name)")
+        .eq("household_id", HOUSEHOLD_ID)
 
       const { data: expenses } = await supabase
         .from("expenses")
@@ -44,15 +49,17 @@ export default function BudgetPage() {
         .gte("date", startDate)
         .lte("date", endDate)
 
-      const enriched = budgets
-        ? budgets.map((b: any) => ({
-            name: b.categories?.name ?? "その他",
-            icon: b.categories?.icon ?? "📦",
-            budget: b.amount ?? 0,
-            spent: 0,
-            category_id: b.category_id,
-          }))
-        : []
+      const monthlyMap = new Map(budgets?.map((b: any) => [b.category_id, b]))
+      const enriched = (defaults ?? []).map((d: any) => {
+        const b = monthlyMap.get(d.category_id) ?? d
+        return {
+          name: b.categories?.name ?? "その他",
+          icon: b.categories?.icon ?? "📦",
+          budget: b.amount ?? 0,
+          spent: 0,
+          category_id: b.category_id,
+        }
+      })
 
       const totals: Record<string, number> = {}
       if (expenses) {
@@ -61,14 +68,14 @@ export default function BudgetPage() {
           totals[id] = (totals[id] ?? 0) + e.amount
         })
       }
-      const maerged = enriched.map((b: any) => ({
+      const merged = enriched.map((b: any) => ({
         name: b.name,
         icon: b.icon,
         spent: totals[b.category_id] ?? 0,
-        budget: b.spent,
+        budget: b.budget,
       }))
 
-      setBudgetData(maerged)
+      setBudgetData(merged)
     }
     fetchAll()
   }, [month])
@@ -142,7 +149,9 @@ export default function BudgetPage() {
         <div className="px-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-bold text-[#334155]">カテゴリ別の予算</h2>
-            <button className="text-sm text-[#6EE7B7] font-bold">編集</button>
+            <Link href={`/budget/edit/${month}`}>
+              <button className="text-sm text-[#6EE7B7] font-bold curso">編集</button>
+            </Link>
           </div>
           <div className="space-y-3">
             {budgetData.map((item) => {

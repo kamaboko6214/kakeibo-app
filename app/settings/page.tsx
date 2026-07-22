@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 const user = {
   user1: { name: 'なつき', avatar: '🐰' },
   user2: { name: 'ゆうた', avatar: '🐻' },
@@ -92,19 +94,31 @@ export default function SettingsPage() {
         {/* 家計簿の管理 */}
         <p className="text-xs text-gray-400 mb-2 px-1">家計簿の管理</p>
         <div className="bg-white rounded-2xl shadow-sm mb-6 overflow-hidden">
-          {menuItems.map((item, i) => (
-            <button
-              key={item.label}
-              className={`w-full flex items-center gap-3 px-4 py-4 text-left ${
-                i !== menuItems.length - 1 ? 'border-b border-gray-50' : ''
-              }`}
-            >
-              <span>{item.icon}</span>
-              <span className="flex-1 text-sm text-[#334155]">{item.label}</span>
-              <span className="text-sm text-gray-400">{item.value}</span>
-              <span className="text-gray-300">›</span>
-            </button>
-          ))}
+          {menuItems.map((item, i) => {
+            const content = (
+              <>
+                <span>{item.icon}</span>
+                <span className="flex-1 text-sm text-[#334155]">{item.label}</span>
+                <span className="text-sm text-gray-400">{item.value}</span>
+                <span className="text-gray-300">›</span>
+              </>
+            )
+            const className = `w-full flex items-center gap-3 px-4 py-4 text-left ${
+              i !== menuItems.length - 1 ? 'border-b border-gray-50' : ''
+            }`
+            if (item.label === '予算') {
+              return (
+                <Link key={item.label} href="/settings/budget" className={className}>
+                  {content}
+                </Link>
+              )
+            }
+            return (
+              <button key={item.label} className={className}>
+                {content}
+              </button>
+            )
+          })}
         </div>
 
         {/* アプリ設定 */}
