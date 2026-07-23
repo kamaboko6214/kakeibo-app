@@ -3,23 +3,13 @@
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase"
 import Link from "next/link"
-
-// const budgetData = [
-//   { name: 'プレゼント', icon: '🎁', spent: 5500, budget: 5000 },
-//   { name: '光熱費', icon: '💡', spent: 18200, budget: 18000 },
-//   { name: '娯楽', icon: '🎬', spent: 14000, budget: 15000 },
-//   { name: '美容', icon: '💄', spent: 6200, budget: 8000 },
-//   { name: '外食', icon: '🍽', spent: 11900, budget: 20000 },
-//   { name: '食費', icon: '🍱', spent: 14440, budget: 25000 },
-//   { name: '医療', icon: '🩺', spent: 2200, budget: 5000 },
-//   { name: '日用品', icon: '🧴', spent: 3800, budget: 8000 },
-// ]
+import { CATEGORY_ICON } from "@/lib/constants"
 
 const totalBudget = 150000
 const totalSpent = 76900
 const HOUSEHOLD_ID = "00000000-0000-0000-0000-000000000001"
 export default function BudgetPage() {
-  const [month, setMonth] = useState(5)
+  const [month, setMonth] = useState(new Date().getMonth() + 1)
   const supabase = createClient()
   const [budgetData, setBudgetData] = useState<
     { name: string; icon: string; spent: number; budget: number }[]
@@ -31,17 +21,20 @@ export default function BudgetPage() {
       const endDate = `${new Date().getFullYear()}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`
       const yearMonth = `${new Date().getFullYear()}-${String(month).padStart(2, "0")}`
 
+      // 予算データを取得
       const { data: budgets } = await supabase
         .from("budgets")
         .select("amount, category_id, categories(id, name)")
         .eq("household_id", HOUSEHOLD_ID)
         .eq("year_month", yearMonth)
 
+      // デフォルト予算データを取得
       const { data: defaults } = await supabase
         .from("budget_defaults")
         .select("amount, category_id, categories(id, name)")
         .eq("household_id", HOUSEHOLD_ID)
 
+      // 今月の支出データを取得
       const { data: expenses } = await supabase
         .from("expenses")
         .select("amount, category_id, categories(id, name)")
@@ -54,7 +47,7 @@ export default function BudgetPage() {
         const b = monthlyMap.get(d.category_id) ?? d
         return {
           name: b.categories?.name ?? "その他",
-          icon: b.categories?.icon ?? "📦",
+          icon: CATEGORY_ICON[b.categories?.name] ?? "📦",
           budget: b.amount ?? 0,
           spent: 0,
           category_id: b.category_id,
@@ -74,7 +67,7 @@ export default function BudgetPage() {
         spent: totals[b.category_id] ?? 0,
         budget: b.budget,
       }))
-
+      
       setBudgetData(merged)
     }
     fetchAll()

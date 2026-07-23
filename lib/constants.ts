@@ -4,7 +4,7 @@ export const CATEGORIES = [
   { name: '外食',     icon: '🍽', color: '#FB7185' },
   { name: '日用品',   icon: '🧴', color: '#6EE7B7' },
   { name: '交通',     icon: '🚃', color: '#6EE7B7' },
-  { name: '娯楽',     icon: '🎬', color: '#FB7185' },
+  { name: '娯楽',     icon: '⛳', color: '#FB7185' },
   { name: '光熱費',   icon: '💡', color: '#FCD34D' },
   { name: '美容',     icon: '💄', color: '#FB7185' },
   { name: '医療',     icon: '🩺', color: '#6EE7B7' },

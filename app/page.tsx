@@ -3,27 +3,64 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { CATEGORY_ICON, CATEGORY_COLOR, HOUSEHOLD_ID } from '@/lib/constants'
+import type { User, Category, Expense } from '@/lib/types'
 import Link from 'next/link'
 
 export default function Home() {
-  const [categories, setCategories] = useState<{ id: string, name: string, icon: string, color: string }[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const supabase = createClient()
+  const [users, setUsers] = useState<User[]>([])
   const [categoryTotals, setCategoryTotals] = useState<Record<string, number>>({})
-  const [recentExpenses, setRecentExpenses] = useState<any[]>([])
+  const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
   const [totalExpense, setTotalExpense] = useState<number>(0)
   const [totalBudget, setTotalBudget] = useState<number>(0)
   const [year, setYear] = useState(new Date().getFullYear())
   const [month, setMonth] = useState(new Date().getMonth() + 1)
+  const [myprofile, setMyProfile] = useState<User | null>(null)
 
-// カテゴリの取得
+  // 最近の支出
   useEffect(() => {
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month, 0).getDate()
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+    const fetchMyProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, name, avatar')
+        .eq('id', user.id)
+        .single()
+      if (data) {
+        setMyProfile(data)
+      }
+    }
+
+    const fetchUsers = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, name, avatar')
+        // .eq('household_id', HOUSEHOLD_ID)
+        console.log(data)
+      if (data) {
+        const enriched = data.map((user: { id: string, name: string, avatar: string }) => ({
+          id: user.id,
+          name: user.name ?? '名無し',
+          avatar: user.avatar ?? '👤',
+        }))
+        setUsers(enriched)
+      }
+    }
+
+    // カテゴリ一覧
     const fetchCategories = async() => {
       const { data } = await supabase
         .from('categories')
         .select('id, name')
         .eq('household_id', HOUSEHOLD_ID)
         if (data) {
-          const enriched = data.map(cat => ({
+          const enriched = data.map((cat: { id: string, name: string }) => ({
             ...cat,
             icon: CATEGORY_ICON[cat.name] ?? '📦',
             color: CATEGORY_COLOR[cat.name] ?? '#94A3B8',
@@ -31,14 +68,6 @@ export default function Home() {
           setCategories(enriched)
         }
     }
-    fetchCategories()
-  }, [])
-
-  // 最近の支出
-  useEffect(() => {
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
-    const lastDay = new Date(year, month, 0).getDate()
-    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
     // 最近の支出
     const fetchRecentExpenses = async() => {
@@ -51,13 +80,13 @@ export default function Home() {
         .order('date', { ascending: false })
         .limit(5)
         if (data) {
-          const enriched = data.map((e: any) => ({
+          const enriched = data.map((e: { date: string, memo: string, amount: number, categories: { name: string }[] | null }) => ({
             ...e,
-            icon: CATEGORY_ICON[e.categories?.name] ?? '📦',
-            categoryName: e.categories?.name ?? 'その他',
+            icon: CATEGORY_ICON[e.categories?.[0]?.name ?? ''] ?? '📦',
+            categoryName: e.categories?.[0]?.name ?? 'その他',
         }))
         setRecentExpenses(enriched)
-      }    
+      }
     }
 
     // 支出合計
@@ -70,7 +99,7 @@ export default function Home() {
         .lte('date', endDate)
 
       if (data) {
-        const total = data.reduce((sum: number, e: any) => sum + e.amount, 0)
+        const total = data.reduce((sum: number, e: { amount: number }) => sum + e.amount, 0)
         setTotalExpense(total)
       }
     }
@@ -87,29 +116,18 @@ export default function Home() {
         .eq('year_month', yearMonth)
 
       if (data) {
-        const total = data.reduce((sum: number, b: any) => sum + b.amount, 0)
+        const total = data.reduce((sum: number, b: { amount: number }) => sum + b.amount, 0)
         setTotalBudget(total)
       }
     }
 
+    fetchMyProfile()
+    fetchUsers()
+    fetchCategories()
     fetchTotalBudget()
     fetchTotalExpense()
     fetchRecentExpenses()
   }, [])
-
-
-  // いったんモック
-  const mockData = {
-    user1: { name: 'なつき', avatar: '🐰', amount: 17180 },
-    user2: { name: 'ゆうた', avatar: '🐻', amount: 13700 },
-    recentExpenses: [
-      { date: '5月26日', icon: '🍱', name: 'スーパー', category: '食費', amount: 2480 },
-      { date: '5月26日', icon: '🍽', name: '記念日ディナー', category: '外食', amount: 3800 },
-      { date: '5月25日', icon: '🚃', name: 'Suicaチャージ', category: '交通', amount: 1320 },
-      { date: '5月25日', icon: '🎬', name: '映画 2人分', category: '娯楽', amount: 4400 },
-      { date: '5月24日', icon: '🍱', name: 'コンビニ', category: '食費', amount: 1860 },
-    ],
-  }
 
   const remaining = totalBudget - totalExpense
   const percentage = Math.round((totalExpense / totalBudget) * 100)
@@ -128,12 +146,13 @@ export default function Home() {
             <h1 className="text-2xl font-bold text-[#334155]">おかえり！</h1>
           </div>
           <div className="flex gap-2">
-            <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-lg">
-              {mockData.user1.avatar}
-            </div>
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-lg">
-              {mockData.user2.avatar}
-            </div>
+            {myprofile && (
+              <Link href="/settings/profile">
+              <div key={myprofile.id} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-lg">
+                {myprofile.avatar}
+              </div>
+              </Link>
+            )}
           </div>
         </div>
 
@@ -168,10 +187,9 @@ export default function Home() {
 
         {/* ユーザー別支出 */}
         <div className="grid grid-cols-2 gap-3 mb-6">
-          {[mockData.user1, mockData.user2].map((user) => (
-            <div key={user.name} className="bg-white rounded-2xl p-4 shadow-sm">
+          {users.slice(0, 2).map((user) => (
+            <div key={user.id} className="bg-white rounded-2xl p-4 shadow-sm">
               <p className="text-sm text-gray-400 mb-1">{user.avatar} {user.name}</p>
-              <p className="text-xl font-bold text-[#334155]">¥{user.amount.toLocaleString()}</p>
             </div>
           ))}
         </div>

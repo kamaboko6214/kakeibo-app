@@ -30,7 +30,7 @@ export default function BudgetDefaultsPage() {
       const merged = (categories ?? []).map((c: any) => ({
         category_id: c.id,
         name: c.name,
-        icon: c.icon ?? "📦",
+        icon: CATEGORY_ICON[c.name] ?? "📦",
         amount: defaultsMap.get(c.id) ?? 0,
       }))
 
@@ -86,7 +86,7 @@ export default function BudgetDefaultsPage() {
                   onChange={(e) =>
                     handleChange(item.category_id, Number(e.target.value) || 0)
                   }
-                  className="w-24 text-right border rounded-lg px-2 py-1 text-sm"
+                  className="w-24 text-right border border-gray-300 rounded-lg px-2 py-1 text-sm"
                 />
               </div>
             ))}
@@ -94,7 +94,7 @@ export default function BudgetDefaultsPage() {
 
           <button
             onClick={handleSave}
-            className="w-full mt-6 bg-[#6EE7B7] text-white font-bold py-3 rounded-2xl"
+            className="w-full mt-6 bg-[#6EE7B7] text-white font-bold py-3 rounded-2xl border border-[#6EE7B7] hover:bg-[#5cd0a8] transition-colors duration-200"
           >
             保存
           </button>

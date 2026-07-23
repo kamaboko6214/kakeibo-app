@@ -18,6 +18,7 @@ type Expense = {
   date: string
   memo: string | null
   categories: { name: string } | null
+  profiles: {name: string, avatar: string} | null
 }
 
 export default function ExpensesPage() {
@@ -34,12 +35,11 @@ export default function ExpensesPage() {
       const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
       const { data } = await supabase
         .from('expenses')
-        .select('id, amount, date, memo, categories(name)')
+        .select('id, amount, date, memo, categories(name), profiles(name, avatar)')
         .eq('household_id', HOUSEHOLD_ID)
         .gte('date', startDate)
         .lte('date', endDate)
         .order('date', { ascending: false })
-
       if (data) setExpenses(data as unknown as Expense[])
     }
     fetchExpenses()
@@ -142,7 +142,7 @@ export default function ExpensesPage() {
                       <span className="text-xl w-8">{categoryIcons[catName] ?? '📦'}</span>
                       <div className="flex-1">
                         <p className="text-sm font-bold text-[#334155]">{expense.memo ?? catName}</p>
-                        <p className="text-xs text-gray-400">{catName}</p>
+                        <p className="text-xs text-gray-400">{catName}・{expense.profiles?.name ?? '不明'}</p>
                       </div>
                       <p className="font-bold text-[#334155]">¥{expense.amount.toLocaleString()}</p>
                     </div>

@@ -1,14 +1,15 @@
 'use client'
 
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase'
+import { HOUSEHOLD_ID } from '@/lib/constants'
 
-const user = {
-  user1: { name: 'なつき', avatar: '🐰' },
-  user2: { name: 'ゆうた', avatar: '🐻' },
-  together: '2年3ヶ月',
-  recordDays: 142,
-  totalSpent: 86000,
-  streak: 12,
+type profile = {
+  id: string
+  name: string
+  avatar: string
 }
 
 const menuItems = [
@@ -24,11 +25,32 @@ const appSettings = [
 ]
 
 export default function SettingsPage() {
+
+  const [user, setUser] = useState<profile[]>([])
+  const supabase = createClient()
+  const router = useRouter()
   const handleCopy = () => {
     navigator.clipboard.writeText('kakei.app/invite/nT8kY2pq')
     alert('コピーしました！')
   }
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/auth/login')
+  }
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, name, avatar')
+        .eq('household_id', HOUSEHOLD_ID)
+      if (data) {
+        setUser(data)
+      }
+    }
+    fetchUserData()
+  }, [])
   return (
     <main className="min-h-screen bg-[#F8FAFC] pb-24">
       <div className="max-w-[390px] mx-auto px-4 pt-12">
@@ -36,36 +58,24 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-bold text-[#334155] mb-6">設定</h1>
 
         {/* プロフィールカード */}
-        <div className="bg-[#FB7185] rounded-2xl p-5 text-white mb-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex">
-              <div className="w-12 h-12 rounded-full bg-white/30 flex items-center justify-center text-2xl">
-                {user.user1.avatar}
-              </div>
-              <div className="w-12 h-12 rounded-full bg-white/30 flex items-center justify-center text-2xl -ml-2">
-                {user.user2.avatar}
-              </div>
+        <Link href="/settings/profile" className="block">
+          <div className="bg-[#FB7185] rounded-2xl p-5 text-white mb-6 hover:bg-[#FB7185]/80 transition-colors duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold opacity-80">プロフィール</h2>
+              <span className="text-white/70">›</span>
             </div>
-            <div>
-              <p className="font-bold text-lg">{user.user1.name} & {user.user2.name}</p>
-              <p className="text-sm opacity-80">{user.together} 一緒に節約中 🌱</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-xl font-bold">{user.recordDays}日</p>
-              <p className="text-xs opacity-70">記録日数</p>
-            </div>
-            <div>
-              <p className="text-xl font-bold">¥{(user.totalSpent / 10000).toFixed(1)}万</p>
-              <p className="text-xs opacity-70">合計支出</p>
-            </div>
-            <div>
-              <p className="text-xl font-bold">{user.streak}日 🔥</p>
-              <p className="text-xs opacity-70">連続記録</p>
+            <div className="flex items-center gap-6">
+              {user.map((u) => (
+                <div key={u.id} className="flex flex-col items-center gap-2">
+                  <div className="w-14 h-14 rounded-full bg-white/30 flex items-center justify-center text-2xl">
+                    {u.avatar}
+                  </div>
+                  <p className="text-sm font-bold">{u.name}</p>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        </Link>
 
         {/* パートナー招待 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm mb-6">
@@ -138,6 +148,14 @@ export default function SettingsPage() {
             </button>
           ))}
         </div>
+
+        {/* ログアウト */}
+        <button
+          onClick={handleLogout}
+          className="w-full bg-white rounded-2xl shadow-sm px-4 py-4 mt-6 text-center text-sm font-bold text-red-400"
+        >
+          ログアウト
+        </button>
 
       </div>
     </main>

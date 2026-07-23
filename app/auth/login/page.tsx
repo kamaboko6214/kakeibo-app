@@ -17,14 +17,18 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password })
-      if (error) setError(error.message)
-      else alert('確認メールを送信しました！')
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setError(error.message)
-      else router.push('/')
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ email, password })
+        if (error) setError(error.message)
+        else alert('確認メールを送信しました！')
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) setError(error.message)
+        else router.push('/')
+      }
+    } catch (e) {
+      alert('予期しないエラー: ' + (e instanceof Error ? e.message : String(e)))
     }
 
     setLoading(false)
