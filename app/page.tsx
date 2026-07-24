@@ -41,7 +41,7 @@ export default function Home() {
       const { data } = await supabase
         .from('profiles')
         .select('id, name, avatar')
-        // .eq('household_id', HOUSEHOLD_ID)
+        .eq('household_id', HOUSEHOLD_ID)
         console.log(data)
       if (data) {
         const enriched = data.map((user: { id: string, name: string, avatar: string }) => ({
@@ -62,6 +62,7 @@ export default function Home() {
         if (data) {
           const enriched = data.map((cat: { id: string, name: string }) => ({
             ...cat,
+            amount: categoryTotals[cat.name] ?? 0,
             icon: CATEGORY_ICON[cat.name] ?? '📦',
             color: CATEGORY_COLOR[cat.name] ?? '#94A3B8',
           }))
@@ -209,13 +210,13 @@ export default function Home() {
                 <div className="flex-1">
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-[#334155]">{cat.name}</span>
-                    {/* <span className="font-bold text-[#334155]">¥{cat.amount.toLocaleString()}</span> */}
+                    <span className="font-bold text-[#334155]">¥{cat.amount.toLocaleString()}</span>
                   </div>
                   <div className="bg-gray-100 rounded-full h-1.5">
                     <div
                       className="rounded-full h-1.5"
                       style={{
-                        // width: `${Math.round((cat.amount / mockData.totalExpense) * 100)}%`,
+                        width: `${Math.round((cat.amount / totalExpense) * 100)}%`,
                         backgroundColor: cat.color
                       }}
                     />
