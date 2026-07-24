@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { createClient } from "@/lib/supabase"
+import { CATEGORY_ICON } from "@/lib/constants"
 
 const HOUSEHOLD_ID = "00000000-0000-0000-0000-000000000001"
 
-export default function BudgetEditPage() {
-  const { month } = useParams<{ month: string }>()
+export default function BudgetEditPage(params: { year: string; month: string }) {
+  const { year, month } = useParams() as { year: string; month: string }
   const supabase = createClient()
   const [budgetData, setBudgetData] = useState<
     { name: string; icon: string; category_id: string; budget: number }[]
@@ -16,17 +17,17 @@ export default function BudgetEditPage() {
 
   useEffect(() => {
     const fetchAll = async () => {
-      const yearMonth = `${new Date().getFullYear()}-${String(month).padStart(2, "0")}`
+      const yearMonth = `${year}-${String(month).padStart(2, "0")}`
 
       const { data: budgets } = await supabase
         .from("budgets")
-        .select("amount, category_id, categories(id, name, icon)")
+        .select("amount, category_id, categories(id, name)")
         .eq("household_id", HOUSEHOLD_ID)
         .eq("year_month", yearMonth)
 
       const { data: defaults } = await supabase
         .from("budget_defaults")
-        .select("amount, category_id, categories(id, name, icon)")
+        .select("amount, category_id, categories(id, name)")
         .eq("household_id", HOUSEHOLD_ID)
 
       const monthlyMap = new Map(budgets?.map((b: any) => [b.category_id, b]))
@@ -34,18 +35,17 @@ export default function BudgetEditPage() {
         const b = monthlyMap.get(d.category_id) ?? d
         return {
           name: b.categories?.name ?? "その他",
-          icon: b.categories?.icon ?? "📦",
+          icon: CATEGORY_ICON[b.categories?.name] ?? "📦",
           category_id: b.category_id,
           budget: b.amount ?? 0,
         }
       })
 
       setBudgetData(enriched)
-          console.log(enriched)
     }
     fetchAll()
 
-  }, [month])
+  }, [year, month])
 
   const handleChange = (category_id: string, value: number) => {
     setBudgetData((prev) =>
@@ -56,7 +56,7 @@ export default function BudgetEditPage() {
   }
 
   const handleSave = async () => {
-    const yearMonth = `${new Date().getFullYear()}-${String(month).padStart(2, "0")}`
+    const yearMonth = `${year}-${String(month).padStart(2, "0")}`
     await Promise.all(
       budgetData.map((b) =>
         supabase.from("budgets").upsert(
@@ -79,7 +79,7 @@ export default function BudgetEditPage() {
       <div className="max-w-[390px] mx-auto">
         <div className="px-4 pt-12 pb-4">
           <h1 className="font-bold text-[#334155] mb-6">
-            2026年 {month}月の予算編集
+            {year}年 {month}月の予算編集
           </h1>
 
           <div className="space-y-3">
